@@ -1,0 +1,117 @@
+version: "3.8"
+services:
+    # PHP Service
+    php:
+        build:
+            context: .
+            target: php
+            args:
+                - APP_ENV=Festiv4all
+        # environment:
+        #     - APP_ENV=${APP_ENV}
+        #     - CONTAINER_ROLE=app
+        env_file: .env
+        working_dir: /var/www
+        volumes:
+            - ./:/var/www
+        ports:
+            - 80:8000
+        # expose:
+        #     - 8000
+        depends_on:
+            - database
+            - redis
+
+    # PHP Service
+    websocket:
+        build:
+            context: .
+            target: php
+            args:
+                - APP_ENV=Festiv4all
+        environment:
+            - APP_ENV=${APP_ENV}
+            - CONTAINER_ROLE=websocket
+        # env_file: .env
+        working_dir: /var/www
+        volumes:
+            - ./:/var/www
+        ports:
+            - 6001:6001
+        depends_on:
+            - database
+            - redis
+
+    # Database Server
+    database:
+        image: mysql:8.0
+        ports:
+            - 3306:3306
+        env_file: .env
+        # environment:
+        #     - MYSQL_HOST=localhost
+        #     - MYSQL_DATABASE=festiv4all
+        #     - MYSQL_USER=root
+        #     - MYSQL_PASSWORD=event
+        #     - MYSQL_ROOT_PASSWORD=event
+        volumes:
+            - db-data:/var/lib/mysql
+
+    # Redis Server
+    redis:
+        image: redis:alpine
+        command: redis-server --appendonly yes --requirepass  "${REDIS_PASSWORD}"
+        ports:
+            - 6379:6379
+
+    # Queue Server
+    queue:
+        build:
+            context: .
+            target: php
+            args:
+                - APP_ENV=Festiv4all
+        environment:
+            - APP_ENV=${APP_ENV}
+            - CONTAINER_ROLE=queue
+        # env_file: .env
+        working_dir: /var/www
+        volumes:
+            - ./:/var/www
+
+    # Node Server
+    node:
+        build:
+            context: .
+            target: node
+        volumes:
+            - .:/usr/src
+            - ./node_modules:/usr/src/node_modules
+        tty: true
+
+    phpmyadmin:
+        image: phpmyadmin
+        restart: always
+        ports:
+            - 8080:80
+        links:
+            - database
+        environment:
+            - PMA_ARBITRARY=1
+            - PMA_PORT=3306
+            - PMA_HOST=database
+    # nginx:
+    #     image: nginx:alpine
+    #     restart: unless-stopped
+    #     ports:
+    #         - 80:80
+    #     volumes:
+    #         - ./:/var/www
+    #         - ./nginx:/etc/nginx/conf.d
+    #     depends_on:
+    #         - php
+    # networks:
+    #     - travellist
+
+volumes:
+    db-data: ~
